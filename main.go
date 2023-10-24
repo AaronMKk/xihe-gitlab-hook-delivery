@@ -108,12 +108,21 @@ func main() {
 }
 
 func loadConfig(f string) (configuration, error) {
+	var multiErrs []error
 	cfg := configuration{}
-	err := LoadFromYaml(f, &cfg)
-	err1 := os.Remove(f)
 
-	if err2 := MultiErrors(err, err1); err2 != nil {
-		return cfg, err2
+	err := LoadFromYaml(f, &cfg)
+	if err != nil {
+		multiErrs = append(multiErrs, err)
+	}
+
+	err1 := os.Remove(f)
+	if err1 != nil {
+		multiErrs = append(multiErrs, err1)
+	}
+
+	if len(multiErrs) > 0 {
+		return cfg, MultiErrors(multiErrs...)
 	}
 
 	cfg.SetDefault()
@@ -123,11 +132,19 @@ func loadConfig(f string) (configuration, error) {
 }
 
 func readHmac(f string) (string, error) {
+	var multiErrs []error
 	v, err := ioutil.ReadFile(f)
-	err1 := os.Remove(f)
+	if err != nil {
+		multiErrs = append(multiErrs, err)
+	}
 
-	if err2 := MultiErrors(err, err1); err2 != nil {
-		return "", err2
+	err1 := os.Remove(f)
+	if err1 != nil {
+		multiErrs = append(multiErrs, err1)
+	}
+
+	if len(multiErrs) > 0 {
+		return "", MultiErrors(multiErrs...)
 	}
 
 	return string(bytes.TrimSpace(v)), nil
@@ -166,24 +183,31 @@ func connetKafka(cfg *mq.MQConfig) error {
 }
 
 func loadKafkaConfig(file string) (cfg mq.MQConfig, err error) {
+	var multiErrs []error
 	v, err := ioutil.ReadFile(file)
-	err1 := os.Remove(file)
+	if err != nil {
+		multiErrs = append(multiErrs, err)
+	}
 
-	if err = MultiErrors(err, err1); err != nil {
+	err1 := os.Remove(file)
+	if err1 != nil {
+		multiErrs = append(multiErrs, err1)
+	}
+
+	if len(multiErrs) > 0 {
+		err = MultiErrors(multiErrs...)
 		return
 	}
 
 	str := string(v)
 	if str == "" {
 		err = errors.New("missing addresses")
-
 		return
 	}
 
 	addresses := parseAddress(str)
 	if len(addresses) == 0 {
 		err = errors.New("no valid address for kafka")
-
 		return
 	}
 
@@ -192,7 +216,6 @@ func loadKafkaConfig(file string) (cfg mq.MQConfig, err error) {
 	}
 
 	cfg.Addresses = addresses
-
 	return
 }
 
